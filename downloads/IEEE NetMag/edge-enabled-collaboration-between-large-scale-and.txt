@@ -1,0 +1,54 @@
+Call for Papers
+---------------
+
+[Submit a Paper](https://ieee.atyponrex.com/journal/network-ieee)
+
+With the swift evolution of Internet-of-Things (IoT) technology, the sensor-cloud technique has emerged as a pivotal bridge to connect the physical and digital realms, powerfully driving the progress of intelligent networks. However, traditional data processing paradigms often grapple with constraints like high latency and substantial energy consumption, particularly when faced with an overwhelming volume of data. Herein, edge intelligence, a synergistic integration of edge computing and artificial intelligence techniques, has arisen as a potent remedy. This innovation brings about transformative changes through its low-latency characteristics and high energy efficiency while bolstering data security by prioritizing privacy safeguards.
+
+Large Language Models (LLMs), such as ChatGPT and Sora, have attracted great attention and achieved huge success in academia and industry recently. Furthermore, the synergy between large-scale and lightweight models exhibits tremendous promise for tackling intricate issues and enhancing decision-making precision in sensor-cloud networks. This synergy enables effective data processing and analysis even on resource-constrained edge devices. More precisely, large-scale models excel at processing and analyzing complex data yet demand more substantial computational power and storage. In contrast, lightweight models offer reduced computational complexity and compact storage requirements, fitting the scenarios demanding high real-time responsiveness and minimal resource availability. A current focal point of research revolves around how to effectively orchestrate collaboration between large-scale and lightweight models within sensor-cloud networks by harnessing the unique strengths of the twomodel types.
+
+This Special Issue (SI) delves deeply into cutting-edge technologies, application challenges, and developmental trajectories concerning the edge-enabled collaboration between large-scale and lightweight models in sensor-cloud networks, providing readers with a comprehensive, penetrating, and visionary discourse. All topics relevant to advancing edge-enabled collaboration between large-scale and lightweight models are of interest. Consequently, the topics of interest include but are not limited to the following:
+
+* Novel IoT architectures that enable edge intelligence in sensor-cloud networks
+* Edge intelligence technologies and their applications, such as object detection, augmented/virtual reality, and artificial intelligence-generated content.
+* Strategies for optimizing and deploying large-scale and lightweight models in sensor-cloud networks.
+* Dynamic resource scheduling for large-scale and lightweight model collaboration in sensor-cloud networks.
+* Load balancing strategies for large-scale and lightweight model collaboration in sensor-cloud networks.
+* Collaborative training and inference of large-scale and lightweight models in sensor-cloud networks.
+* Model compression and acceleration for large-scale and lightweight model collaboration.
+* Distributed learning and collaborative inference with different-scale models in sensor-cloud networks.
+* Distributed sensing and collaborative decision-making in sensor-cloud networks.
+* Innovation and practice of collaboration between large-scale and lightweight models in sensor-cloud networks.
+* Tailored solutions for smart cities utilizing collaboration between large-scale and lightweight models.
+
+### **Submission Guidelines**
+
+Manuscripts should conform to the standard format as indicated in the “Information for Authors” section of the [Paper Submission Guidelines](https://www.comsoc.org/publications/magazines/ieee-network/paper-submission-guidelines).
+
+All manuscripts to be considered for publication must be submitted by the deadline through the magazine’s [IEEE Author Portal](https://ieee.atyponrex.com/journal/network-ieee) submission site. Select the appropriate issue date and topic from the “Please Select an Article Type” drop-down menu.
+
+### **Important Dates**
+
+**Submissions Deadline:** 1 October 2025  
+**Initial Decision Notification:** 1 December 2025  
+**Revision Submission Deadline:** 1 February 2025  
+**Final Decision Notification:** 1 March 2026  
+**Final Manuscript Due:** 15 March 2026  
+**Publication Date:** May 2026
+
+### **Guest Editors**
+
+[**Tian Wang**](mailto:tianwang@bnu.edu.cn) **(Lead Guest Editor)**  
+Beijing Normal University, China
+
+[**Yao Liu**](mailto:liu21@usf.edu)  
+University of South Florida, USA
+
+[**Geyong Min**](mailto:G.Min@exeter.ac.uk)  
+University of Exeter, UK
+
+[**Nektarios Georgalas**](mailto:nektarios.georgalas@bt.com)  
+British Telecommunications, UK
+
+[**Yan Zhang**](mailto:yanzhang@ieee.org)  
+University of Oslo, Norway

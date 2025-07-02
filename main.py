@@ -1,4 +1,4 @@
-from utils import get_filename_from_url, download_file, show_diff_and_extract_links
+from utils import get_filename_from_url, download_file, show_diff_and_extract_links, sanitize_filename, fetch_and_store_linked_file
 from urls import URLS
 import os
 
@@ -7,7 +7,7 @@ DEST_FOLDER = "downloads"
 
 def process_url(entry):
     """
-    Process a single URL entry: fetch, compare, and print results.
+    Process a single URL entry: fetch, compare, print results, and fetch linked <a> hrefs.
     Args:
         entry (dict): Contains 'name', 'base', 'url', and 'element'.
     """
@@ -22,7 +22,11 @@ def process_url(entry):
         with open(file_path, 'r', encoding='utf-8') as f:
             old_content = f.read()
         print(f"\n--- Checking: {name} ---")
-        show_diff_and_extract_links(old_content, new_content, base, element)
+        results = show_diff_and_extract_links(old_content, new_content, base, element)
+        for entry in results:
+            href = entry['href']
+            if href:
+                fetch_and_store_linked_file(href, subfolder, base)
     else:
         print(f"\n--- First time saving: {name} ---")
     with open(file_path, 'w', encoding='utf-8') as f:

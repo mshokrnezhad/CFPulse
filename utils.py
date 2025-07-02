@@ -1,8 +1,9 @@
 import os
 import requests
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 import difflib
+from markdownify import markdownify as md
 
 
 def get_filename_from_url(url):
@@ -61,7 +62,7 @@ def extract_href_hreflang_text_from_line(line):
 
 def show_diff_and_extract_links(old_text, new_text, base, element=None):
     """
-    Shows the unified diff between old and new text, and prints href and text from <a> tags in changed lines.
+    Shows the unified diff between old and new text, and returns all <a> tag info (href, hreflang, text) from changed lines as a list of dicts.
     Only considers differences inside the specified HTML element if 'element' is provided.
     Args:
         old_text (str): The previous HTML content.
@@ -69,13 +70,12 @@ def show_diff_and_extract_links(old_text, new_text, base, element=None):
         base (str): The base URL to prepend to hrefs.
         element (str, optional): The HTML tag (with class/id) to scope the diff to.
     Returns:
-        bool: True if differences were found, False otherwise.
+        list: List of dicts with keys 'href', 'hreflang', 'text' for each <a> tag in changed lines.
     """
     def extract_element_html(html, element):
         if not element:
             return html
         soup = BeautifulSoup(html, 'html.parser')
-        # Try to parse element as a tag with class or id
         import re
         tag_match = re.match(r'<(\w+)([^>]*)>', element)
         if not tag_match:
@@ -100,17 +100,71 @@ def show_diff_and_extract_links(old_text, new_text, base, element=None):
     new_lines = new_text.splitlines(keepends=True)
     diff = difflib.unified_diff(old_lines, new_lines, fromfile='old', tofile='new')
     diff_output = list(diff)
+    results = []
     if any(line for line in diff_output if line.startswith('+') and not line.startswith('+++')):
-        links = []
         for line in diff_output:
             if line.startswith('+') and not line.startswith('+++'):
-                links.extend(extract_href_hreflang_text_from_line(line[1:]))
-        if links:
-            for href, _, text in links:
-                print(f"href: {base}{href}, \ntext: {text}")
+                for href, hreflang, text in extract_href_hreflang_text_from_line(line[1:]):
+                    results.append({
+                        'href': f"{base}{href}" if href else None,
+                        'hreflang': hreflang,
+                        'text': text
+                    })
+        if results:
+            print("Found <a> tags in changed parts:")
+            for entry in results:
+                print("tag: <a>")
+                print(f"href: {entry['href']}")
+                print(f"text: {entry['text']}")
         else:
             print("No <a> tags with href/hreflang/text found in changed parts.")
-        return True
     else:
         print("No changes detected.")
-        return False
+    return results
+
+
+def sanitize_filename(href):
+    """
+    Create a safe filename from a URL or path, always ending with .txt.
+    Args:
+        href (str): The href or URL to sanitize.
+    Returns:
+        str: A safe filename ending with .txt
+    """
+    parsed = urlparse(href)
+    name = os.path.basename(parsed.path)
+    if not name:
+        name = 'linked_file'
+    # Remove query string and fragments
+    name = name.split('?')[0].split('#')[0]
+    if name.endswith('.html'):
+        name = name[:-5]
+    name += '.txt'
+    return name
+
+
+def fetch_and_store_linked_file(href, subfolder, base):
+    """
+    Fetch the content at href, extract <div class="text-long">, convert it to Markdown, and store in subfolder as a .txt file. Use base for relative URLs.
+    Args:
+        href (str): The href to fetch.
+        subfolder (str): The folder to save the file in.
+        base (str): The base URL for resolving relative hrefs.
+    """
+    url = urljoin(base, href)
+    filename = sanitize_filename(href)
+    file_path = os.path.join(subfolder, filename)
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        div = soup.find('div', class_='text-long')
+        if div:
+            content = md(str(div))
+        else:
+            content = '<div class="text-long"> not found'
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"Fetched and saved <div class='text-long'> as Markdown: {file_path}")
+    except Exception as e:
+        print(f"Failed to fetch {url}: {e}")
