@@ -59,15 +59,43 @@ def extract_href_hreflang_text_from_line(line):
     return results
 
 
-def show_diff_and_extract_links(old_text, new_text):
+def show_diff_and_extract_links(old_text, new_text, base, element=None):
     """
     Shows the unified diff between old and new text, and prints href and text from <a> tags in changed lines.
+    Only considers differences inside the specified HTML element if 'element' is provided.
     Args:
         old_text (str): The previous HTML content.
         new_text (str): The new HTML content.
+        base (str): The base URL to prepend to hrefs.
+        element (str, optional): The HTML tag (with class/id) to scope the diff to.
     Returns:
         bool: True if differences were found, False otherwise.
     """
+    def extract_element_html(html, element):
+        if not element:
+            return html
+        soup = BeautifulSoup(html, 'html.parser')
+        # Try to parse element as a tag with class or id
+        import re
+        tag_match = re.match(r'<(\w+)([^>]*)>', element)
+        if not tag_match:
+            return html
+        tag = tag_match.group(1)
+        attrs_str = tag_match.group(2)
+        attrs = {}
+        class_match = re.search(r'class=["\']([^"\']+)["\']', attrs_str)
+        if class_match:
+            attrs['class'] = class_match.group(1).split()
+        id_match = re.search(r'id=["\']([^"\']+)["\']', attrs_str)
+        if id_match:
+            attrs['id'] = id_match.group(1)
+        el = soup.find(tag, attrs=attrs)
+        return str(el) if el else ''
+
+    if element:
+        old_text = extract_element_html(old_text, element)
+        new_text = extract_element_html(new_text, element)
+
     old_lines = old_text.splitlines(keepends=True)
     new_lines = new_text.splitlines(keepends=True)
     diff = difflib.unified_diff(old_lines, new_lines, fromfile='old', tofile='new')
@@ -79,7 +107,7 @@ def show_diff_and_extract_links(old_text, new_text):
                 links.extend(extract_href_hreflang_text_from_line(line[1:]))
         if links:
             for href, _, text in links:
-                print(f"href: {href}, \ntext: {text}")
+                print(f"href: {base}{href}, \ntext: {text}")
         else:
             print("No <a> tags with href/hreflang/text found in changed parts.")
         return True
