@@ -1,8 +1,25 @@
-from utils import get_filename_from_url, download_file, show_diff_and_extract_links, sanitize_filename, fetch_and_store_linked_file
+from utils import get_filename_from_url, download_file, show_diff_and_extract_links, fetch_and_store_linked_file, save_notion_markdown
 from urls import URLS
 import os
+from agents import agent
+from pydantic_ai.providers.openrouter import OpenRouterProvider
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIModel
+from dotenv import load_dotenv
+import asyncio
 
 DEST_FOLDER = "downloads"
+
+load_dotenv()
+
+ROUTE = os.getenv("ROUTE")
+API_KEY = os.getenv("API_KEY")
+BASE_URL = os.getenv("BASE_URL")
+page_id = os.getenv("NOTION_PAGE_ID")
+notion_token = os.getenv("NOTION_TOKEN")
+
+model = OpenAIModel(ROUTE, provider=OpenRouterProvider(api_key=API_KEY))
+agent = Agent(model)
 
 
 def process_url(entry):
@@ -33,10 +50,19 @@ def process_url(entry):
         f.write(new_content)
 
 
-def main():
-    for entry in URLS:
-        process_url(entry)
+async def main():
+    # for entry in URLS:
+    #     process_url(entry)
+
+    # Save Notion page as KB if env vars are set
+    if not page_id or not notion_token:
+        print("Please set NOTION_PAGE_ID and NOTION_TOKEN environment variables.")
+    else:
+        save_notion_markdown(page_id, notion_token)
+
+    # response = await agent.run("What is the capital of France?")
+    # print(response.output)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

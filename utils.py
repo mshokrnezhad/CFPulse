@@ -103,6 +103,7 @@ def show_diff_and_extract_links(old_text, new_text, base, element=None):
     results = []
     if any(line for line in diff_output if line.startswith('+') and not line.startswith('+++')):
         for line in diff_output:
+            # print(line)
             if line.startswith('+') and not line.startswith('+++'):
                 for href, hreflang, text in extract_href_hreflang_text_from_line(line[1:]):
                     results.append({
@@ -168,3 +169,79 @@ def fetch_and_store_linked_file(href, subfolder, base):
         print(f"Fetched and saved <div class='text-long'> as Markdown: {file_path}")
     except Exception as e:
         print(f"Failed to fetch {url}: {e}")
+
+
+def fetch_notion_blocks(page_id, notion_token):
+    print(f"Fetching blocks for page/block: {page_id}")
+    url = f"https://api.notion.com/v1/blocks/{page_id}/children?page_size=100"
+    headers = {
+        "Authorization": f"Bearer {notion_token}",
+        "Notion-Version": "2022-06-28"
+    }
+    blocks = []
+    next_cursor = None
+    while True:
+        params = {}
+        if next_cursor:
+            params['start_cursor'] = next_cursor
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
+        blocks.extend(data.get('results', []))
+        print(f"Fetched {len(data.get('results', []))} blocks (total so far: {len(blocks)})")
+        if data.get('has_more'):
+            next_cursor = data['next_cursor']
+        else:
+            break
+    return blocks
+
+
+def block_to_markdown(block, notion_token):
+    block_type = block['type']
+    print(f"Processing block type: {block_type}")
+    md = ""
+    if block_type == 'paragraph':
+        text = ''.join([t['plain_text'] for t in block['paragraph']['rich_text']])
+        md += text + '\n\n'
+    elif block_type == 'heading_1':
+        text = ''.join([t['plain_text'] for t in block['heading_1']['rich_text']])
+        md += f"# {text}\n\n"
+    elif block_type == 'heading_2':
+        text = ''.join([t['plain_text'] for t in block['heading_2']['rich_text']])
+        md += f"## {text}\n\n"
+    elif block_type == 'heading_3':
+        text = ''.join([t['plain_text'] for t in block['heading_3']['rich_text']])
+        md += f"### {text}\n\n"
+    elif block_type == 'bulleted_list_item':
+        text = ''.join([t['plain_text'] for t in block['bulleted_list_item']['rich_text']])
+        md += f"- {text}\n"
+    elif block_type == 'numbered_list_item':
+        text = ''.join([t['plain_text'] for t in block['numbered_list_item']['rich_text']])
+        md += f"1. {text}\n"
+    # Add more block types as needed...
+
+    # Recursively process children if they exist
+    if block.get('has_children'):
+        print(f"Block {block['id']} has children, fetching recursively...")
+        child_blocks = fetch_notion_blocks(block['id'], notion_token)
+        for child in child_blocks:
+            md += block_to_markdown(child, notion_token)
+    return md
+
+
+def notion_page_to_markdown(page_id, notion_token):
+    print(f"Converting Notion page {page_id} to Markdown...")
+    blocks = fetch_notion_blocks(page_id, notion_token)
+    md = ""
+    for block in blocks:
+        md += block_to_markdown(block, notion_token)
+    print(f"Finished converting Notion page {page_id} to Markdown.")
+    return md
+
+
+def save_notion_markdown(page_id, notion_token, filename="downloads/KB.txt"):
+    print(f"Saving Notion page {page_id} as Markdown to {filename}...")
+    md = notion_page_to_markdown(page_id, notion_token)
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(md)
+    print(f"Saved Notion page as Markdown to {filename}")
