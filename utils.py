@@ -335,7 +335,7 @@ def generate_cfp_prompt(kb_text, cfp_text):
         - Potential Gaps or Misalignments: Is there anything intresting in CFP that I can use to extend KB? If yes, what are they? and in which parts of KB can they be applied?
         - Suggested Submission Angles: Briefly explain if this CFP is a good fit for my research interests. If yes, give me up to three suggested paper titles and very short abstracts that I can build on top of KB to submit to this CFP.
         
-        RETURN A RESPONSE JUST INCLUDING THE ABOVE SECTION IN MARKDOWN FORMAT. DONT ADD/RETURN ANYTHING ELSE.
+        RETURN A RESPONSE JUST INCLUDING THE ABOVE SECTIONS IN MARKDOWN FORMAT. DONT ADD/RETURN ANYTHING ELSE. RETURN PARAGRAPHED TEXT. DONT USE ITEMIZIANTION.
         
         <KB>
         {kb_text}
@@ -405,3 +405,55 @@ def send_email_with_attachment(subject, body, to_email):
         server.starttls()
         server.login(EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
         server.send_message(msg)
+
+
+def create_email_body(filename):
+    """
+    Creates an email body from the venue, link, and response fields of all entries in cfps.
+    Reads cfps data from RESULTS.json file in tmp folder.
+
+    Returns:
+        str: Formatted email body
+    """
+    import json
+
+    # Read cfps from JSON file
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            cfps = json.load(f)
+    except FileNotFoundError:
+        return "Error: RESULTS.json file not found in tmp folder."
+    except json.JSONDecodeError:
+        return "Error: Invalid JSON format in RESULTS.json file."
+
+    body = "CFP Analysis Results:\n\n"
+
+    for entry in cfps:
+        if entry['venue'] != 'KB':  # Skip the KB entry itself
+            body += f"Venue: {entry['venue']}\n"
+            body += f"Link: {entry['link']}\n"
+            response_text = entry.get('response', 'No response available')
+            response_text = response_text.replace('```markdown', '').replace('```', '')
+            body += f"\n{response_text}\n"
+            body += "-" * 50 + "\n\n"
+
+    return body
+
+
+def create_email_body_for_entry(entry):
+    """
+    Creates an email body from the venue, link, and response fields of an entry.
+
+    Returns:
+        str: Formatted email body
+    """
+
+    body = ""
+
+    body += f"{entry['link']}\n"
+    response_text = entry.get('response', 'No response available')
+    response_text = response_text.replace('```markdown', '').replace('```', '')
+    body += f"\n{response_text}\n"
+    body += "-" * 50 + "\n\n"
+
+    return body
