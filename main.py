@@ -7,6 +7,7 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 from dotenv import load_dotenv
 import asyncio
+import shutil
 
 DEST_FOLDER = "downloads"
 
@@ -122,6 +123,21 @@ async def main():
             print(f"Email sent for: {entry['title']}")
 
     print("All emails sent.")
+
+    print("\n" + "-" * 50)
+    print("STEP 6: Cleaning up temporary files")
+    print("-" * 50)
+
+    try:
+        # Remove all files in the temporary folder but keep the folder itself
+        for filename in os.listdir(TMP_FOLDER):
+            file_path = os.path.join(TMP_FOLDER, filename)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+                print(f"Removed file: {filename}")
+        print(f"Successfully cleaned temporary folder: {TMP_FOLDER}")
+    except Exception as e:
+        print(f"Error cleaning temporary folder: {e}")
 
 
 if __name__ == "__main__":
