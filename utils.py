@@ -1,9 +1,21 @@
 import os
 import requests
+import markdown
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 import difflib
 from markdownify import markdownify as md
+import re
+import smtplib
+from email.message import EmailMessage
+from dotenv import load_dotenv
+
+load_dotenv()
+
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = os.getenv("EMAIL_PORT")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 
 def get_filename_from_url(url):
@@ -76,7 +88,6 @@ def show_diff_and_extract_links(old_text, new_text, base, element=None):
         if not element:
             return html
         soup = BeautifulSoup(html, 'html.parser')
-        import re
         tag_match = re.match(r'<(\w+)([^>]*)>', element)
         if not tag_match:
             return html
@@ -144,13 +155,15 @@ def sanitize_filename(href):
     return name
 
 
-def fetch_and_store_linked_file(href, subfolder, base):
+def fetch_and_store_linked_file(href, subfolder, base, name=None, text=None):
     """
     Fetch the content at href, extract <div class="text-long">, convert it to Markdown, and store in subfolder as a .txt file. Use base for relative URLs.
     Args:
         href (str): The href to fetch.
         subfolder (str): The folder to save the file in.
         base (str): The base URL for resolving relative hrefs.
+        name (str, optional): The name of the entry (journal/source).
+        text (str, optional): The anchor text of the link.
     """
     url = urljoin(base, href)
     filename = sanitize_filename(href)
@@ -165,8 +178,13 @@ def fetch_and_store_linked_file(href, subfolder, base):
         else:
             content = '<div class="text-long"> not found'
         with open(file_path, 'w', encoding='utf-8') as f:
+            # Write header
+            f.write(f"Venue: {name}\n" if name else "")
+            f.write(f"Link: {href}\n")
+            f.write(f"Title: {text}\n" if text else "")
+            f.write("-----\n\n")
             f.write(content)
-        print(f"Fetched and saved <div class='text-long'> as Markdown: {file_path}")
+        print(f"Fetched and saved a new CFP for {name} as Markdown: {file_path}")
     except Exception as e:
         print(f"Failed to fetch {url}: {e}")
 
@@ -239,9 +257,151 @@ def notion_page_to_markdown(page_id, notion_token):
     return md
 
 
-def save_notion_markdown(page_id, notion_token, filename="downloads/KB.txt"):
+def save_notion_markdown(page_id, notion_token, filename):
     print(f"Saving Notion page {page_id} as Markdown to {filename}...")
     md = notion_page_to_markdown(page_id, notion_token)
     with open(filename, "w", encoding="utf-8") as f:
         f.write(md)
     print(f"Saved Notion page as Markdown to {filename}")
+
+
+def load_diff_files(folder, kb_filename):
+    """
+    Read all files in the tmp folder and extract venue, link, title, and text.
+    Returns a list of dictionaries with the specified attributes.
+    """
+    files_data = []
+
+    if not os.path.exists(folder):
+        print(f"TMP_FOLDER {folder} does not exist.")
+        return files_data
+
+    for filename in os.listdir(folder):
+        if filename.endswith('.txt'):
+            file_path = os.path.join(folder, filename)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+
+                if filename == kb_filename + ".txt":
+                    # For KB file, set venue, link, title to "KB"
+                    file_data = {
+                        'venue': 'KB',
+                        'link': 'KB',
+                        'title': 'KB',
+                        'text': content
+                    }
+                else:
+                    # For other files, extract from first three lines
+                    lines = content.split('\n')
+                    venue = lines[0] if len(lines) > 0 else ''
+                    link = lines[1] if len(lines) > 1 else ''
+                    title = lines[2] if len(lines) > 2 else ''
+
+                    # Remove the first three lines from text content
+                    text_lines = lines[3:] if len(lines) > 3 else []
+                    text = '\n'.join(text_lines).strip()
+
+                    file_data = {
+                        'venue': venue,
+                        'link': link,
+                        'title': title,
+                        'text': text
+                    }
+
+                files_data.append(file_data)
+                print(f"Processed file: {filename}")
+
+            except Exception as e:
+                print(f"Error reading file {filename}: {e}")
+
+    return files_data
+
+
+def generate_cfp_prompt(kb_text, cfp_text):
+    """
+    Generate a prompt comparing a CFP to KB research interests.
+
+    Args:
+        kb_text (str): The knowledge base text containing research interests
+        cfp_text (str): The call for papers text
+
+    Returns:
+        str: The formatted prompt for comparison
+    """
+    return f"""Suppose that KB is my research interests, and CFP is a new call for paper. 
+        Compare CFP to KB and the folloiwng in a markdown format:
+        - Key Overlaps and Fits: Is there any point in CFP that canbe addressed directly by KB?
+        - Potential Gaps or Misalignments: Is there anything intresting in CFP that I can use to extend KB? If yes, what are they? and in which parts of KB can they be applied?
+        - Suggested Submission Angles: Briefly explain if this CFP is a good fit for my research interests. If yes, give me up to three suggested paper titles and very short abstracts that I can build on top of KB to submit to this CFP.
+        
+        RETURN A RESPONSE JUST INCLUDING THE ABOVE SECTION IN MARKDOWN FORMAT. DONT ADD/RETURN ANYTHING ELSE.
+        
+        <KB>
+        {kb_text}
+        </KB>
+
+        <CFP>
+        {cfp_text}
+        </CFP>
+    """
+
+
+def save_cfps_to_json(cfps, filename):
+    """
+    Save the processed CFPs data to a JSON file.
+
+    Args:
+        cfps (list): List of dictionaries containing CFP data
+        filename (str): The filename to save the JSON to
+    """
+    import json
+
+    # Create the full file path
+    file_path = os.path.join(filename)
+
+    # Convert the data to JSON-serializable format
+    json_data = []
+    for entry in cfps:
+        json_entry = {
+            'venue': entry['venue'],
+            'link': entry['link'],
+            'title': entry['title'],
+            'text': entry['text'],
+            'prompt': entry.get('prompt', ''),
+            'response': entry.get('response', '')
+        }
+        json_data.append(json_entry)
+
+    # Write to JSON file
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=2, ensure_ascii=False)
+        print(f"CFPs data saved to {file_path}")
+    except Exception as e:
+        print(f"Error saving CFPs to JSON: {e}")
+
+
+def send_email_with_attachment(subject, body, to_email):
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = EMAIL_HOST_USER
+    msg["To"] = to_email
+    msg.set_content(body)
+
+    # Convert Markdown to HTML
+    html_body = markdown.markdown(body)
+    msg.set_content(body)  # Fallback plain text
+    msg.add_alternative(html_body, subtype='html')  # HTML version
+
+    # # Attach the file
+    # with open(attachment_path, "rb") as f:
+    #     file_data = f.read()
+    #     file_name = os.path.basename(attachment_path)
+    # msg.add_attachment(file_data, maintype="application", subtype="octet-stream", filename=file_name)
+
+    # Send the email
+    with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
+        server.starttls()
+        server.login(EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
+        server.send_message(msg)
