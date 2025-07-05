@@ -1,6 +1,5 @@
 import os
 import requests
-import markdown
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 import difflib
@@ -9,6 +8,7 @@ import re
 import smtplib
 from email.message import EmailMessage
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
 
@@ -16,6 +16,13 @@ EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = os.getenv("EMAIL_PORT")
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+
+logging.basicConfig(
+    filename='cfpulse.log',
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 
 def get_filename_from_url(url):
@@ -114,7 +121,6 @@ def show_diff_and_extract_links(old_text, new_text, base, element=None):
     results = []
     if any(line for line in diff_output if line.startswith('+') and not line.startswith('+++')):
         for line in diff_output:
-            # print(line)
             if line.startswith('+') and not line.startswith('+++'):
                 for href, hreflang, text in extract_href_hreflang_text_from_line(line[1:]):
                     results.append({
@@ -123,15 +129,15 @@ def show_diff_and_extract_links(old_text, new_text, base, element=None):
                         'text': text
                     })
         if results:
-            print("Found <a> tags in changed parts:")
+            logging.info("Found <a> tags in changed parts:")
             for entry in results:
-                print("tag: <a>")
-                print(f"href: {entry['href']}")
-                print(f"text: {entry['text']}")
+                logging.info("tag: <a>")
+                logging.info(f"href: {entry['href']}")
+                logging.info(f"text: {entry['text']}")
         else:
-            print("No <a> tags with href/hreflang/text found in changed parts.")
+            logging.info("No <a> tags with href/hreflang/text found in changed parts.")
     else:
-        print("No changes detected.")
+        logging.info("No changes detected.")
     return results
 
 
@@ -178,19 +184,18 @@ def fetch_and_store_linked_file(href, subfolder, base, name=None, text=None):
         else:
             content = '<div class="text-long"> not found'
         with open(file_path, 'w', encoding='utf-8') as f:
-            # Write header
             f.write(f"Venue: {name}\n" if name else "")
             f.write(f"Link: {href}\n")
             f.write(f"Title: {text}\n" if text else "")
             f.write("-----\n\n")
             f.write(content)
-        print(f"Fetched and saved a new CFP for {name} as Markdown: {file_path}")
+        logging.info(f"Fetched and saved a new CFP for {name} as Markdown: {file_path}")
     except Exception as e:
-        print(f"Failed to fetch {url}: {e}")
+        logging.error(f"Failed to fetch {url}: {e}")
 
 
 def fetch_notion_blocks(page_id, notion_token):
-    print(f"Fetching blocks for page/block: {page_id}")
+    logging.info(f"Fetching blocks for page/block: {page_id}")
     url = f"https://api.notion.com/v1/blocks/{page_id}/children?page_size=100"
     headers = {
         "Authorization": f"Bearer {notion_token}",
@@ -206,7 +211,7 @@ def fetch_notion_blocks(page_id, notion_token):
         response.raise_for_status()
         data = response.json()
         blocks.extend(data.get('results', []))
-        print(f"Fetched {len(data.get('results', []))} blocks (total so far: {len(blocks)})")
+        logging.info(f"Fetched {len(data.get('results', []))} blocks (total so far: {len(blocks)})")
         if data.get('has_more'):
             next_cursor = data['next_cursor']
         else:
@@ -216,7 +221,7 @@ def fetch_notion_blocks(page_id, notion_token):
 
 def block_to_markdown(block, notion_token):
     block_type = block['type']
-    print(f"Processing block type: {block_type}")
+    logging.info(f"Processing block type: {block_type}")
     md = ""
     if block_type == 'paragraph':
         text = ''.join([t['plain_text'] for t in block['paragraph']['rich_text']])
@@ -240,7 +245,7 @@ def block_to_markdown(block, notion_token):
 
     # Recursively process children if they exist
     if block.get('has_children'):
-        print(f"Block {block['id']} has children, fetching recursively...")
+        logging.info(f"Block {block['id']} has children, fetching recursively...")
         child_blocks = fetch_notion_blocks(block['id'], notion_token)
         for child in child_blocks:
             md += block_to_markdown(child, notion_token)
@@ -248,21 +253,21 @@ def block_to_markdown(block, notion_token):
 
 
 def notion_page_to_markdown(page_id, notion_token):
-    print(f"Converting Notion page {page_id} to Markdown...")
+    logging.info(f"Converting Notion page {page_id} to Markdown...")
     blocks = fetch_notion_blocks(page_id, notion_token)
     md = ""
     for block in blocks:
         md += block_to_markdown(block, notion_token)
-    print(f"Finished converting Notion page {page_id} to Markdown.")
+    logging.info(f"Finished converting Notion page {page_id} to Markdown.")
     return md
 
 
 def save_notion_markdown(page_id, notion_token, filename):
-    print(f"Saving Notion page {page_id} as Markdown to {filename}...")
+    logging.info(f"Saving Notion page {page_id} as Markdown to {filename}...")
     md = notion_page_to_markdown(page_id, notion_token)
     with open(filename, "w", encoding="utf-8") as f:
         f.write(md)
-    print(f"Saved Notion page as Markdown to {filename}")
+    logging.info(f"Saved Notion page as Markdown to {filename}")
 
 
 def load_diff_files(folder, kb_filename):
@@ -273,7 +278,7 @@ def load_diff_files(folder, kb_filename):
     files_data = []
 
     if not os.path.exists(folder):
-        print(f"TMP_FOLDER {folder} does not exist.")
+        logging.error(f"TMP_FOLDER {folder} does not exist.")
         return files_data
 
     for filename in os.listdir(folder):
@@ -310,10 +315,10 @@ def load_diff_files(folder, kb_filename):
                     }
 
                 files_data.append(file_data)
-                print(f"Processed file: {filename}")
+                logging.info(f"Processed file: {filename}")
 
             except Exception as e:
-                print(f"Error reading file {filename}: {e}")
+                logging.error(f"Error reading file {filename}: {e}")
 
     return files_data
 
@@ -398,9 +403,9 @@ def save_cfps_to_json(cfps, filename):
     try:
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(json_data, f, indent=2, ensure_ascii=False)
-        print(f"CFPs data saved to {file_path}")
+        logging.info(f"CFPs data saved to {file_path}")
     except Exception as e:
-        print(f"Error saving CFPs to JSON: {e}")
+        logging.error(f"Error saving CFPs to JSON: {e}")
 
 
 def send_email_with_attachment(subject, body, to_email):
@@ -476,3 +481,29 @@ def create_email_body_for_entry(entry):
     # body += "-" * 50 + "\n\n"
 
     return body
+
+
+def send_failure_alert(subject, message, to_email):
+    from email.message import EmailMessage
+    import smtplib
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = EMAIL_HOST_USER
+    msg["To"] = to_email
+    msg.set_content(message)
+    with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
+        server.starttls()
+        server.login(EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
+        server.send_message(msg)
+
+
+def cleanup_tmp_folder(tmp_folder):
+    try:
+        for filename in os.listdir(tmp_folder):
+            file_path = os.path.join(tmp_folder, filename)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+                logging.info(f"Removed file: {filename}")
+        logging.info(f"Successfully cleaned temporary folder: {tmp_folder}")
+    except Exception as e:
+        logging.error(f"Error cleaning temporary folder: {e}")
