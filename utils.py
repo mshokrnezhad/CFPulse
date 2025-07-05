@@ -329,13 +329,34 @@ def generate_cfp_prompt(kb_text, cfp_text):
     Returns:
         str: The formatted prompt for comparison
     """
-    return f"""Suppose that KB is my research interests, and CFP is a new call for paper. 
-        Compare CFP to KB and the folloiwng in a markdown format:
-        - Key Overlaps and Fits: Is there any point in CFP that canbe addressed directly by KB?
-        - Potential Gaps or Misalignments: Is there anything intresting in CFP that I can use to extend KB? If yes, what are they? and in which parts of KB can they be applied?
-        - Suggested Submission Angles: Briefly explain if this CFP is a good fit for my research interests. If yes, give me up to three suggested paper titles and very short abstracts that I can build on top of KB to submit to this CFP.
+    return f"""Suppose that <KB> is my research interests, and <CFP> is a new call for paper.
+        Compare <CFP> with <KB> by applying the rules specified in <RULES>, and return the results in <STRUCTURE> format.
         
-        RETURN A RESPONSE JUST INCLUDING THE ABOVE SECTIONS IN MARKDOWN FORMAT. DONT ADD/RETURN ANYTHING ELSE. RETURN PARAGRAPHED TEXT. DONT USE ITEMIZIANTION.
+        <RULES>
+        - If at least one of the directions listed in <CFP> is also mentioned in <KB>, then <CFP> is a 4/4 fit with <KB>.
+        - If none of the directions match, but there is a match in all three of the following categories—use cases, objectives, and constraints (i.e., at least one match in each)—then <CFP> is a 3/4 fit with <KB>.
+        - If none of the directions match, but there is a match in any two of the following categories—use cases, objectives, and constraints (i.e., at least one match in two categories)—then <CFP> is a 2/4 fit with <KB>.
+        - If none of the directions match, but there is a match in at least one of the categories—use cases, objectives, or constraints—then <CFP> is a 1/4 fit with <KB>.
+        - If there are no matches in directions, use cases, objectives, or constraints, then <CFP> is a 0/4 fit with <KB>.
+        </RULES>
+
+        <STRUCTURE>
+        <br><br><b>Key Overlaps and Fits:</b><br><br>
+        write plain, unformatted text that estimates the fit score (0/4, 1/4, 2/4, 3/4, 4/4) and explains any point in <CFP> which can be directly addressed by <KB>, based on the fit determined using the rules defined in <RULES>. avoid itemization.
+        <br><br><b>Potential Gaps or Misalignments:</b><br><br>
+        write plain, unformatted text that explains any point in <CFP> that could be used to extend or enhance <KB>. Specify which parts of <KB> each point could be applied to. avoid itemization.
+        <br><br><b>Suggested Submission Angles</b><br><br>
+        write plain, unformatted text that summarizes fits and gaps and directs the reader to the following suggested papers for possible submission based on <CFP> and <KB>. avoid itemization.
+        <br><br><b>Title 1: write paper title here</b><br>
+        <b>Abstract:</b> write paper abstract here
+        <br><br><b>Title 2: write paper title here</b><br>
+        <b>Abstract:</b> write paper abstract here
+        <br><br><b>Title 3: write paper title here</b><br>
+        <b>Abstract:</b> write paper abstract here<br>
+        <br><br>write a message to the reader encouraging him to check the link to the CFP for more details. do not include any link here.<br>
+        </STRUCTURE>
+        
+        RETURN A RESPONSE JUST INCLUDING THE ABOVE <STRUCTURE> IN HTML FORMAT. DONT ADD/RETURN ANYTHING ELSE.
         
         <KB>
         {kb_text}
@@ -387,14 +408,12 @@ def send_email_with_attachment(subject, body, to_email):
     msg["Subject"] = subject
     msg["From"] = EMAIL_HOST_USER
     msg["To"] = to_email
-    msg.set_content(body)
+    # Set plain text fallback
+    msg.set_content("This email requires an HTML-compatible email client.")
+    # Add HTML version
+    msg.add_alternative(body, subtype='html')
 
-    # Convert Markdown to HTML
-    html_body = markdown.markdown(body)
-    msg.set_content(body)  # Fallback plain text
-    msg.add_alternative(html_body, subtype='html')  # HTML version
-
-    # # Attach the file
+    # # Attach the file (if needed in the future)
     # with open(attachment_path, "rb") as f:
     #     file_data = f.read()
     #     file_name = os.path.basename(attachment_path)
@@ -433,9 +452,9 @@ def create_email_body(filename):
             body += f"Venue: {entry['venue']}\n"
             body += f"Link: {entry['link']}\n"
             response_text = entry.get('response', 'No response available')
-            response_text = response_text.replace('```markdown', '').replace('```', '')
+            response_text = response_text.replace('```html', '').replace('```', '')
             body += f"\n{response_text}\n"
-            body += "-" * 50 + "\n\n"
+            # body += "-" * 50 + "\n\n"
 
     return body
 
@@ -454,6 +473,6 @@ def create_email_body_for_entry(entry):
     response_text = entry.get('response', 'No response available')
     response_text = response_text.replace('```markdown', '').replace('```', '')
     body += f"\n{response_text}\n"
-    body += "-" * 50 + "\n\n"
+    # body += "-" * 50 + "\n\n"
 
     return body

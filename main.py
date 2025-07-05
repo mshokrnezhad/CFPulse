@@ -8,6 +8,7 @@ from pydantic_ai.models.openai import OpenAIModel
 from dotenv import load_dotenv
 import asyncio
 import shutil
+import time
 
 DEST_FOLDER = "downloads"
 
@@ -46,7 +47,7 @@ def process_url(entry):
     if os.path.exists(file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
             old_content = f.read()
-        print(f"\n--- Checking: {name} ---")
+        print(f"--- Checking: {name} ---")
         results = show_diff_and_extract_links(old_content, new_content, base, element)
         for entry in results:
             href = entry['href']
@@ -54,7 +55,7 @@ def process_url(entry):
             if href:
                 fetch_and_store_linked_file(href, TMP_FOLDER, base, name=name, text=text)
     else:
-        print(f"\n--- First time saving: {name} ---")
+        print(f"--- First time saving: {name} ---")
     with open(file_path, 'w', encoding='utf-8') as f:
         f.write(new_content)
 
@@ -64,17 +65,17 @@ async def main():
     print("STEP 0: Finding New CFPs")
     print("-" * 50)
 
-    # for entry in URLS:
-    #     process_url(entry)
+    for entry in URLS:
+        process_url(entry)
 
     print("\n" + "-" * 50)
     print("STEP 1: Loading KB")
     print("-" * 50)
 
-    # if not PAGE_ID or not NOTION_TOKEN:
-    #     print("Please set NOTION_PAGE_ID and NOTION_TOKEN environment variables.")
-    # else:
-    #     save_notion_markdown(PAGE_ID, NOTION_TOKEN, KB_FILE_PATH)
+    if not PAGE_ID or not NOTION_TOKEN:
+        print("Please set NOTION_PAGE_ID and NOTION_TOKEN environment variables.")
+    else:
+        save_notion_markdown(PAGE_ID, NOTION_TOKEN, KB_FILE_PATH)
 
     print("\n" + "-" * 50)
     print("STEP 2: Loading CFPs")
@@ -93,7 +94,7 @@ async def main():
             if kb_entry:
                 prompt = generate_cfp_prompt(kb_entry['text'], entry['text'])
 
-                print(f"Processing CFP: {entry['title']} ---")
+                print(f"--- Processing CFP: {entry['title']} ---")
                 print(f"Venue: {entry['venue']}")
                 print(f"Link: {entry['link']}")
                 print("Prompt generated successfully.")
@@ -110,7 +111,6 @@ async def main():
     print("STEP 5: Emailing results")
     print("-" * 50)
 
-    # Send individual emails for each CFP entry (excluding KB)
     for entry in cfps:
         if entry['venue'] != 'KB':  # Skip the KB entry
             email_body = create_email_body_for_entry(entry)
@@ -122,14 +122,16 @@ async def main():
             )
             print(f"Email sent for: {entry['title']}")
 
-    print("All emails sent.")
+    if any(entry['venue'] != 'KB' for entry in cfps):
+        print("All emails sent.")
+    else:
+        print("No emails to send.")
 
     print("\n" + "-" * 50)
     print("STEP 6: Cleaning up temporary files")
     print("-" * 50)
 
     try:
-        # Remove all files in the temporary folder but keep the folder itself
         for filename in os.listdir(TMP_FOLDER):
             file_path = os.path.join(TMP_FOLDER, filename)
             if os.path.isfile(file_path):
@@ -141,4 +143,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    while True:
+        asyncio.run(main())
+        print("\n\n\nSleeping for 5 minutes before next run...\n\n")
+        time.sleep(300)
