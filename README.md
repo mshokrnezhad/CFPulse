@@ -4,8 +4,8 @@ A Python application that fetches, processes, and analyzes Calls for Papers (CFP
 
 ## Features
 
-- Downloads and compares CFPs from a list of URLs
-- Uses AI to analyze and summarize CFPs
+- Downloads CFPs from a list of URLs
+- Uses AI to analyze and summarize CFPs based on a given set of research intrests
 - Sends results via email
 - Logs all activity to `cfpulse.log`
 - Designed for daily/periodic runs (via Docker and cron)
@@ -14,7 +14,7 @@ A Python application that fetches, processes, and analyzes Calls for Papers (CFP
 
 - Python 3.11
 - Requests, BeautifulSoup, markdownify, dotenv
-- Notion API integration
+- Notion API integration (to get research intrests)
 - OpenAI/Router AI integration (via pydantic-ai)
 - Email via SMTP
 - Docker for containerization
@@ -25,6 +25,8 @@ A Python application that fetches, processes, and analyzes Calls for Papers (CFP
 
 - Python 3.11 (for local runs) or Docker
 - (Optional) Make sure you have `docker` installed for containerized runs
+- Prepare your Notion page to connect: [YouTube guide](https://youtu.be/M1gu9MDucMA?si=7DvvA-buMQaj1vg5). We suppose your research intrests are stored in a Notion page.
+- Prepare your Gmail to send email with it in Python: [YouTube guide](https://youtu.be/QJobMzcmoMo?si=erZykd9OXITdnJT_). We will email the analysis using Gmail.
 
 ### Installation
 
@@ -38,16 +40,16 @@ cd CFPulse
 2. **Create a `.env` file** in the project directory with the following variables:
 
 ```bash
-ROUTE=your_route
-API_KEY=your_openai_or_router_api_key
-BASE_URL=your_base_url
-NOTION_PAGE_ID=your_notion_page_id
+ROUTE=your_model_in_openrouter
+API_KEY=your_openrouter_api_key
+BASE_URL=openrouter_base_url
+NOTION_PAGE_ID=your_notion_page_id_including_your_intrests
 NOTION_TOKEN=your_notion_token
 TMP_FOLDER=tmp
 KB_FILENAME=KB
 RESULTS_FILENAME=RESULTS
 EMAIL_RECEIVER=your@email.com
-EMAIL_HOST=smtp.example.com
+EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_HOST_USER=your@email.com
 EMAIL_HOST_PASSWORD=your_email_password
@@ -63,11 +65,18 @@ docker build -t cfpulse .
 
 #### **Manual Run (for testing):**
 
+1. Create the log file if it does not exist:
+
+```bash
+touch cfpulse.log
+```
+
+2. Run the application in Docker:
+
 ```bash
 docker run --rm -v $(pwd)/cfpulse.log:/app/cfpulse.log cfpulse
 ```
 - This will run the app once and persist logs to your local `cfpulse.log` file.
-- Make sure `cfpulse.log` exists (create it with `touch cfpulse.log` if needed).
 
 #### **Automated Daily Run (using cron):**
 
@@ -98,9 +107,4 @@ To run the app automatically every day at 2:00 AM and persist logs:
 
 ## Thank You 🙏
 
-Thank you for using CFPulse! This project is designed to automate the tedious process of monitoring and analyzing academic calls for papers. If you have suggestions, issues, or want to contribute, feel free to open an issue or pull request.
-
-If you find this project helpful, please star the repo and share your feedback!
-
-## License
-MIT 
+Thank you for using CFPulse! This project is designed to automate the tedious process of monitoring and analyzing academic calls for papers. If you have suggestions, issues, or want to contribute, feel free to open an issue or pull request. If you find this project helpful, please star the repo and share your feedback!
