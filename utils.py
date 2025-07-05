@@ -10,13 +10,16 @@ from email.message import EmailMessage
 from dotenv import load_dotenv
 import logging
 
+# Load environment variables from .env file
 load_dotenv()
 
+# Email configuration from environment variables
 EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = os.getenv("EMAIL_PORT")
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
+# Configure logging to file with timestamps and log level
 logging.basicConfig(
     filename='cfpulse.log',
     level=logging.INFO,
@@ -195,6 +198,14 @@ def fetch_and_store_linked_file(href, subfolder, base, name=None, text=None):
 
 
 def fetch_notion_blocks(page_id, notion_token):
+    """
+    Fetches all blocks (content) from a Notion page using the Notion API.
+    Args:
+        page_id (str): The Notion page ID.
+        notion_token (str): The Notion integration token.
+    Returns:
+        list: List of block objects from the Notion API.
+    """
     logging.info(f"Fetching blocks for page/block: {page_id}")
     url = f"https://api.notion.com/v1/blocks/{page_id}/children?page_size=100"
     headers = {
@@ -220,6 +231,14 @@ def fetch_notion_blocks(page_id, notion_token):
 
 
 def block_to_markdown(block, notion_token):
+    """
+    Converts a Notion block to Markdown format, recursively handling children.
+    Args:
+        block (dict): The Notion block object.
+        notion_token (str): The Notion integration token.
+    Returns:
+        str: Markdown representation of the block and its children.
+    """
     block_type = block['type']
     logging.info(f"Processing block type: {block_type}")
     md = ""
@@ -253,6 +272,14 @@ def block_to_markdown(block, notion_token):
 
 
 def notion_page_to_markdown(page_id, notion_token):
+    """
+    Converts an entire Notion page to Markdown by fetching and converting all blocks.
+    Args:
+        page_id (str): The Notion page ID.
+        notion_token (str): The Notion integration token.
+    Returns:
+        str: Markdown representation of the page.
+    """
     logging.info(f"Converting Notion page {page_id} to Markdown...")
     blocks = fetch_notion_blocks(page_id, notion_token)
     md = ""
@@ -263,6 +290,13 @@ def notion_page_to_markdown(page_id, notion_token):
 
 
 def save_notion_markdown(page_id, notion_token, filename):
+    """
+    Saves a Notion page as a Markdown file.
+    Args:
+        page_id (str): The Notion page ID.
+        notion_token (str): The Notion integration token.
+        filename (str): The file path to save the Markdown content.
+    """
     logging.info(f"Saving Notion page {page_id} as Markdown to {filename}...")
     md = notion_page_to_markdown(page_id, notion_token)
     with open(filename, "w", encoding="utf-8") as f:
@@ -274,6 +308,11 @@ def load_diff_files(folder, kb_filename):
     """
     Read all files in the tmp folder and extract venue, link, title, and text.
     Returns a list of dictionaries with the specified attributes.
+    Args:
+        folder (str): The folder containing the files.
+        kb_filename (str): The filename for the knowledge base file.
+    Returns:
+        list: List of dictionaries with CFP data.
     """
     files_data = []
 
@@ -409,6 +448,13 @@ def save_cfps_to_json(cfps, filename):
 
 
 def send_email_with_attachment(subject, body, to_email):
+    """
+    Sends an email with the given subject and body to the specified recipient.
+    Args:
+        subject (str): Email subject
+        body (str): Email body (HTML)
+        to_email (str): Recipient email address
+    """
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = EMAIL_HOST_USER
@@ -484,6 +530,13 @@ def create_email_body_for_entry(entry):
 
 
 def send_failure_alert(subject, message, to_email):
+    """
+    Sends an alert email if the main run fails.
+    Args:
+        subject (str): Email subject
+        message (str): Email body
+        to_email (str): Recipient email address
+    """
     from email.message import EmailMessage
     import smtplib
     msg = EmailMessage()
@@ -498,6 +551,11 @@ def send_failure_alert(subject, message, to_email):
 
 
 def cleanup_tmp_folder(tmp_folder):
+    """
+    Removes all files in the specified temporary folder.
+    Args:
+        tmp_folder (str): Path to the temporary folder.
+    """
     try:
         for filename in os.listdir(tmp_folder):
             file_path = os.path.join(tmp_folder, filename)
