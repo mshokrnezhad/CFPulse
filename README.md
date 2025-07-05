@@ -92,8 +92,6 @@ To run the app automatically every day at 2:00 AM and persist logs:
    ```
    - This will run the container daily and append logs to `cfpulse.log` in your project folder.
 
----
-
 ## How it works
 
 - **Step 1:** Downloads and checks for new CFPs from a list of URLs.
