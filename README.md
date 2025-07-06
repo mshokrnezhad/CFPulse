@@ -69,22 +69,26 @@ docker build -t cfpulse .
 
 #### **Manual Run (for testing):**
 
-1. Create the log file if it does not exist:
+1. Create the log file and downloads folder if they do not exist:
 
 ```bash
 touch cfpulse.log
+mkdir -p downloads
 ```
 
 2. Run the application in Docker:
 
 ```bash
-docker run --rm -v $(pwd)/cfpulse.log:/app/cfpulse.log cfpulse
+docker run --rm \
+  -v $(pwd)/cfpulse.log:/app/cfpulse.log \
+  -v $(pwd)/downloads:/app/downloads \
+  cfpulse
 ```
-- This will run the app once and persist logs to your local `cfpulse.log` file.
+- This will run the app once, persist logs to your local `cfpulse.log` file, and keep all downloaded files in your local `downloads` folder.
 
 #### **Automated Daily Run (using cron):**
 
-To run the app automatically every day at 2:00 AM and persist logs:
+To run the app automatically every day at 2:00 AM and persist logs and downloads:
 
 1. Open your crontab:
    ```bash
@@ -92,9 +96,9 @@ To run the app automatically every day at 2:00 AM and persist logs:
    ```
 2. Add this line:
    ```cron
-   0 2 * * * docker run --rm -v $(pwd)/cfpulse.log:/app/cfpulse.log cfpulse
+   0 2 * * * docker run --rm -v $(pwd)/cfpulse.log:/app/cfpulse.log -v $(pwd)/downloads:/app/downloads cfpulse
    ```
-   - This will run the container daily and append logs to `cfpulse.log` in your project folder.
+   - This will run the container daily, append logs to `cfpulse.log`, and keep all downloaded files in your project folder's `downloads` directory.
 
 ## How it works
 
