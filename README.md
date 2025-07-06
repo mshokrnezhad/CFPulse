@@ -1,7 +1,7 @@
 # CFPulse
 
 <div align="center">
-  <img src="cfpulse.png" alt="drawing" width="600"/>
+  <img src="cfpulse.png" alt="drawing" width="400"/>
 </div>
 
 A Python application that fetches, processes, and analyzes Calls for Papers (CFPs) from various IEEE journals, using AI and Notion integration. Designed for automation and daily reporting.
