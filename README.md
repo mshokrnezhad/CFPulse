@@ -27,8 +27,9 @@ A Python application that fetches, processes, and analyzes Calls for Papers (CFP
 
 ### Prerequisites
 
-- Python 3.11 (for local runs) or Docker
-- (Optional) Make sure you have `docker` installed for containerized runs
+- Make sure you have `docker` installed for containerized runs
+- Make sure you have SMTP port 587 open
+- Make sure you have corn installed
 - Prepare your Notion page to connect: [YouTube guide](https://youtu.be/M1gu9MDucMA?si=7DvvA-buMQaj1vg5). We suppose your research intrests are stored in a Notion page.
 - Prepare your Gmail to send email with it in Python: [YouTube guide](https://youtu.be/QJobMzcmoMo?si=erZykd9OXITdnJT_). We will email the analysis using Gmail.
 
@@ -79,7 +80,7 @@ mkdir -p downloads
 2. Run the application in Docker:
 
 ```bash
-docker run --rm \
+docker run -d --rm \
   -v $(pwd)/cfpulse.log:/app/cfpulse.log \
   -v $(pwd)/downloads:/app/downloads \
   cfpulse
@@ -96,7 +97,7 @@ To run the app automatically every day at 2:00 AM and persist logs and downloads
    ```
 2. Add this line:
    ```cron
-   0 2 * * * docker run --rm -v $(pwd)/cfpulse.log:/app/cfpulse.log -v $(pwd)/downloads:/app/downloads cfpulse
+   0 2 * * * docker run -d --rm -v $(pwd)/cfpulse.log:/app/cfpulse.log -v $(pwd)/downloads:/app/downloads cfpulse
    ```
    - This will run the container daily, append logs to `cfpulse.log`, and keep all downloaded files in your project folder's `downloads` directory.
 
